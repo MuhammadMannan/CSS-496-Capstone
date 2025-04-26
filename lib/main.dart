@@ -25,28 +25,47 @@ class MyApp extends StatelessWidget {
         brightness: Brightness.dark,
         colorScheme: const ShadSlateColorScheme.dark(),
       ),
-      title: 'Club Connect', // you can change this to `.dark()` too
+      title: 'UWB Flock',
       debugShowCheckedModeBanner: showDebugBanner,
-      home: const HomePage(),
+      home: const OnboardingPage(),
       routes: {'/auth': (context) => const UnifiedAuthPage()},
     );
   }
 }
 
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+class OnboardingPage extends StatelessWidget {
+  const OnboardingPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Club Connect')),
-      body: Center(
-        child: ShadButton(
-          onPressed: () {
-            Navigator.pushNamed(context, '/auth');
-          },
-          child: const Text('Get Started'),
-        ),
+      backgroundColor: ShadTheme.of(context).colorScheme.background,
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Center(
+            child: Column(
+              children: [
+                const Text(
+                  'UWB Flock',
+                  style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Connect. Discover. Thrive.\nYour gateway to student life at UWB.',
+                  style: Theme.of(context).textTheme.titleMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                ShadButton(
+                  size: ShadButtonSize.lg,
+                  onPressed: () => Navigator.pushNamed(context, '/auth'),
+                  child: const Text('Get Started'),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
