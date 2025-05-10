@@ -12,9 +12,10 @@ class StudentHomePage extends StatefulWidget {
 
 class _StudentHomePageState extends State<StudentHomePage> {
   final supabase = Supabase.instance.client;
-
   final int _selectedIndex = 0;
+
   List<Map<String, dynamic>> _posts = [];
+  Set<String> _rsvpedPostIds = {};
   bool _loading = true;
 
   @override
@@ -45,6 +46,7 @@ class _StudentHomePageState extends State<StudentHomePage> {
       if (followingClubs.isEmpty) {
         setState(() {
           _posts = [];
+          _rsvpedPostIds.clear();
           _loading = false;
         });
         return;
@@ -53,18 +55,63 @@ class _StudentHomePageState extends State<StudentHomePage> {
       final postsResponse = await supabase
           .from('posts')
           .select()
-          .inFilter('club_id', followingClubs) // ✅ correct usage now
+          .inFilter('club_id', followingClubs)
           .order('created_at', ascending: false);
 
-      print('📦 postsResponse: $postsResponse');
+      final postList = List<Map<String, dynamic>>.from(postsResponse);
+      final postIds = postList.map((p) => p['id'] as String).toList();
+
+      final rsvpResponse = await supabase
+          .from('rsvps')
+          .select('post_id')
+          .inFilter('post_id', postIds)
+          .eq('student_id', user.id);
+
+      final rsvpPostIds =
+          (rsvpResponse as List<dynamic>)
+              .map((e) => e['post_id'] as String)
+              .toSet();
+
+      print('📦 postsResponse: $postList');
+      print('✅ RSVP Status: $rsvpPostIds');
 
       setState(() {
-        _posts = List<Map<String, dynamic>>.from(postsResponse);
+        _posts = postList;
+        _rsvpedPostIds = rsvpPostIds;
         _loading = false;
       });
     } catch (e) {
       print('🔥 Failed to load feed: $e');
       setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _toggleRsvp(String postId) async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+
+    final isRsvped = _rsvpedPostIds.contains(postId);
+    print('🔁 Toggling RSVP for post $postId (currently: $isRsvped)');
+
+    try {
+      if (isRsvped) {
+        await supabase
+            .from('rsvps')
+            .delete()
+            .eq('post_id', postId)
+            .eq('student_id', user.id);
+        print('❌ RSVP removed for post: $postId');
+      } else {
+        await supabase.from('rsvps').insert({
+          'post_id': postId,
+          'student_id': user.id,
+        });
+        print('✅ RSVP added for post: $postId');
+      }
+
+      _loadFeed();
+    } catch (e) {
+      print('❗ Error toggling RSVP: $e');
     }
   }
 
@@ -99,6 +146,10 @@ class _StudentHomePageState extends State<StudentHomePage> {
       itemCount: _posts.length,
       itemBuilder: (context, index) {
         final post = _posts[index];
+        final postId = post['id'] as String;
+        final isEvent = post['label'] == 'event';
+        final isRsvped = _rsvpedPostIds.contains(postId);
+
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
           child: ListTile(
@@ -124,6 +175,11 @@ class _StudentHomePageState extends State<StudentHomePage> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                if (isEvent)
+                  TextButton(
+                    onPressed: () => _toggleRsvp(postId),
+                    child: Text(isRsvped ? 'Cancel RSVP' : 'RSVP'),
+                  ),
               ],
             ),
           ),
