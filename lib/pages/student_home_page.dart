@@ -41,8 +41,6 @@ class _StudentHomePageState extends State<StudentHomePage> {
       final followingClubs =
           followingClubsRaw.map((e) => e.toString()).toList();
 
-      print('👀 following_clubs: $followingClubs');
-
       if (followingClubs.isEmpty) {
         setState(() {
           _posts = [];
@@ -54,7 +52,7 @@ class _StudentHomePageState extends State<StudentHomePage> {
 
       final postsResponse = await supabase
           .from('posts')
-          .select()
+          .select('*, clubs:club_id(name, logo_url)')
           .inFilter('club_id', followingClubs)
           .order('created_at', ascending: false);
 
@@ -72,16 +70,12 @@ class _StudentHomePageState extends State<StudentHomePage> {
               .map((e) => e['post_id'] as String)
               .toSet();
 
-      print('📦 postsResponse: $postList');
-      print('✅ RSVP Status: $rsvpPostIds');
-
       setState(() {
         _posts = postList;
         _rsvpedPostIds = rsvpPostIds;
         _loading = false;
       });
     } catch (e) {
-      print('🔥 Failed to load feed: $e');
       setState(() => _loading = false);
     }
   }
@@ -91,7 +85,6 @@ class _StudentHomePageState extends State<StudentHomePage> {
     if (user == null) return;
 
     final isRsvped = _rsvpedPostIds.contains(postId);
-    print('🔁 Toggling RSVP for post $postId (currently: $isRsvped)');
 
     try {
       if (isRsvped) {
@@ -100,18 +93,15 @@ class _StudentHomePageState extends State<StudentHomePage> {
             .delete()
             .eq('post_id', postId)
             .eq('student_id', user.id);
-        print('❌ RSVP removed for post: $postId');
       } else {
         await supabase.from('rsvps').insert({
           'post_id': postId,
           'student_id': user.id,
         });
-        print('✅ RSVP added for post: $postId');
       }
-
       _loadFeed();
     } catch (e) {
-      print('❗ Error toggling RSVP: $e');
+      // handle error
     }
   }
 
@@ -150,51 +140,107 @@ class _StudentHomePageState extends State<StudentHomePage> {
         final isEvent = post['label'] == 'event';
         final isRsvped = _rsvpedPostIds.contains(postId);
 
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ListTile(
-                title: Text(post['title'] ?? 'No Title'),
-                trailing: IconButton(
-                  icon: const Icon(Icons.comment),
-                  onPressed: () => _openCommentsModal(context, postId),
-                  tooltip: 'View Comments',
+        final club = post['clubs'];
+        final logoUrl = club != null ? club['logo_url'] : null;
+
+        print('🪵 clubs field: $club');
+
+        return Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Card(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            elevation: 4,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ListTile(
+                  leading:
+                      logoUrl != null
+                          ? CircleAvatar(
+                            backgroundImage: NetworkImage(logoUrl),
+                            backgroundColor: Colors.transparent,
+                          )
+                          : CircleAvatar(
+                            backgroundColor: Colors.purple[100],
+                            child: Text(
+                              post['title']?[0].toUpperCase() ?? '?',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                  title: Text(
+                    post['title'] ?? 'No Title',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (post['caption'] != null) Text(post['caption']),
-                    if (post['image_url'] != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Image.network(
-                          post['image_url'],
-                          height: 150,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    const SizedBox(height: 8),
-                    Text(
-                      post['label']?.toUpperCase() ?? '',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
+                if (post['image_url'] != null)
+                  Container(
+                    height: 180,
+                    width: double.infinity,
+                    color: Colors.grey[300],
+                    child: Image.network(
+                      post['image_url'],
+                      fit: BoxFit.cover,
+                      errorBuilder:
+                          (context, error, stackTrace) => const Center(
+                            child: Icon(Icons.broken_image, size: 40),
+                          ),
                     ),
-                    if (isEvent)
-                      TextButton(
-                        onPressed: () => _toggleRsvp(postId),
-                        child: Text(isRsvped ? 'Cancel RSVP' : 'RSVP'),
-                      ),
-                  ],
+                  ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  child: Text(
+                    post['caption'] ?? '',
+                    style: const TextStyle(fontSize: 16),
+                  ),
                 ),
-              ),
-            ],
+                const Divider(height: 1),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.favorite_border, size: 20),
+                          const SizedBox(width: 4),
+                          const Text('0'),
+                          const SizedBox(width: 16),
+                          GestureDetector(
+                            onTap: () => _openCommentsModal(context, postId),
+                            child: Row(
+                              children: const [
+                                Icon(Icons.chat_bubble_outline, size: 20),
+                                SizedBox(width: 4),
+                                Text('Comment'),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      isEvent
+                          ? TextButton(
+                            onPressed: () => _toggleRsvp(postId),
+                            child: Text(isRsvped ? 'Cancel RSVP' : 'RSVP'),
+                          )
+                          : TextButton(
+                            onPressed: () {},
+                            child: const Text('Visit Club'),
+                          ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
