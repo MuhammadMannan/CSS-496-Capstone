@@ -1,10 +1,12 @@
 // Combined Login & Sign-Up Page for Students and Clubs
 
-import 'package:flutter/material.dart'; // done by Muhammad
-import 'package:supabase_flutter/supabase_flutter.dart'; // done by Muhammad
-import 'student_home_page.dart'; // done by Muhammad
-import 'club_main_page.dart'; // done by Muhammad
-import 'package:shadcn_ui/shadcn_ui.dart'; // done by Muhammad
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'student_home_page.dart';
+import 'club_main_page.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class UnifiedAuthPage extends StatefulWidget {
   const UnifiedAuthPage({super.key});
@@ -15,6 +17,7 @@ class UnifiedAuthPage extends StatefulWidget {
 
 class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
   final supabase = Supabase.instance.client;
+  final ImagePicker _picker = ImagePicker();
 
   bool obscure = true;
   String _selectedTab = 'login';
@@ -28,10 +31,10 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
   final _studentIdNumberController = TextEditingController();
   final _descriptionController = TextEditingController();
 
-  List<String> _selectedCategories = []; // ✅ Multi-select list
-  String _searchValue = '';
+  List<String> _selectedCategories = [];
+  final String _searchValue = '';
+  File? _logoFile;
 
-  // Club categories (preset list)
   static const clubCategories = {
     'tech': 'Technology',
     'business': 'Business',
@@ -54,6 +57,38 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
       if (entry.value.toLowerCase().contains(_searchValue.toLowerCase()))
         entry.key: entry.value,
   };
+
+  Future<void> _pickLogoImage() async {
+    final picked = await _picker.pickImage(source: ImageSource.gallery);
+    if (picked != null) {
+      setState(() => _logoFile = File(picked.path));
+    }
+  }
+
+  Future<String?> _uploadLogo(String clubId) async {
+    if (_logoFile == null) return null;
+
+    final path = 'club-logos/$clubId.jpg';
+    final bytes = await _logoFile!.readAsBytes();
+
+    try {
+      await supabase.storage
+          .from('club-logos')
+          .uploadBinary(
+            path,
+            bytes,
+            fileOptions: const FileOptions(
+              upsert: true,
+              contentType: 'image/jpeg',
+            ),
+          );
+
+      return supabase.storage.from('club-logos').getPublicUrl(path);
+    } catch (e) {
+      debugPrint('🚫 Logo upload failed: \$e');
+      return null;
+    }
+  }
 
   Future<String?> _getUserRole(String userId) async {
     final student =
@@ -130,12 +165,15 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
             return;
           }
 
+          final logoUrl = await _uploadLogo(user.id);
+
           await supabase.from('clubs').insert({
             'id': user.id,
             'name': name,
             'email': email,
             'description': description,
-            'category': _selectedCategories, // ✅ now a list
+            'category': _selectedCategories,
+            'logo_url': logoUrl,
           });
 
           ShadToast(
@@ -237,7 +275,6 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
 
   Widget _buildMultiCategorySelect() {
     final theme = ShadTheme.of(context);
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -254,7 +291,7 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
           onChanged: (values) {
             setState(() {
               _selectedCategories = values;
-              debugPrint('✅ Selected categories: $_selectedCategories');
+              debugPrint('✅ Selected categories: \$values');
             });
           },
           options: [
@@ -271,13 +308,8 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
             ),
           ],
           selectedOptionsBuilder: (context, values) {
-            if (values.isEmpty) {
-              return const Text('Select multiple categories');
-            }
-            return Text(
-              values.map((v) => clubCategories[v] ?? v).join(', '),
-              overflow: TextOverflow.ellipsis,
-            );
+            if (values.isEmpty) return const Text('Select multiple categories');
+            return Text(values.map((v) => clubCategories[v] ?? v).join(', '));
           },
         ),
       ],
@@ -361,6 +393,17 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
                   if (!isStudent) ...[
                     const SizedBox(height: 16),
                     _buildMultiCategorySelect(),
+                    const SizedBox(height: 12),
+                    TextButton.icon(
+                      onPressed: _pickLogoImage,
+                      icon: const Icon(Icons.image),
+                      label: const Text('Upload Club Logo'),
+                    ),
+                    if (_logoFile != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Image.file(_logoFile!, height: 100),
+                      ),
                   ],
                   const SizedBox(height: 20),
                   ShadButton(

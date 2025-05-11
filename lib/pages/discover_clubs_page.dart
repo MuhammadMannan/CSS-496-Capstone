@@ -92,10 +92,26 @@ class _DiscoverClubsPageState extends State<DiscoverClubsPage> {
   Widget _buildClubCard(Map club) {
     final clubId = club['id'];
     final isFollowing = _followingClubIds.contains(clubId);
+    final logoUrl = club['logo_url'];
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       child: ListTile(
+        leading:
+            logoUrl != null && logoUrl.toString().isNotEmpty
+                ? ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    logoUrl,
+                    width: 50,
+                    height: 50,
+                    fit: BoxFit.cover,
+                    errorBuilder:
+                        (context, error, stackTrace) =>
+                            const Icon(Icons.image_not_supported),
+                  ),
+                )
+                : const Icon(Icons.group, size: 50),
         title: Text(club['name']),
         subtitle: Text(club['description'] ?? ''),
         trailing: ElevatedButton(
