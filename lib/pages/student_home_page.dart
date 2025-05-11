@@ -152,37 +152,150 @@ class _StudentHomePageState extends State<StudentHomePage> {
 
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-          child: ListTile(
-            title: Text(post['title'] ?? 'No Title'),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (post['caption'] != null) Text(post['caption']),
-                if (post['image_url'] != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Image.network(
-                      post['image_url'],
-                      height: 150,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                const SizedBox(height: 8),
-                Text(
-                  post['label']?.toUpperCase() ?? '',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ListTile(
+                title: Text(post['title'] ?? 'No Title'),
+                trailing: IconButton(
+                  icon: const Icon(Icons.comment),
+                  onPressed: () => _openCommentsModal(context, postId),
+                  tooltip: 'View Comments',
                 ),
-                if (isEvent)
-                  TextButton(
-                    onPressed: () => _toggleRsvp(postId),
-                    child: Text(isRsvped ? 'Cancel RSVP' : 'RSVP'),
-                  ),
-              ],
-            ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (post['caption'] != null) Text(post['caption']),
+                    if (post['image_url'] != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Image.network(
+                          post['image_url'],
+                          height: 150,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    const SizedBox(height: 8),
+                    Text(
+                      post['label']?.toUpperCase() ?? '',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (isEvent)
+                      TextButton(
+                        onPressed: () => _toggleRsvp(postId),
+                        child: Text(isRsvped ? 'Cancel RSVP' : 'RSVP'),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
+        );
+      },
+    );
+  }
+
+  void _openCommentsModal(BuildContext context, String postId) {
+    final commentController = TextEditingController();
+    final user = supabase.auth.currentUser;
+
+    List<Map<String, dynamic>> comments = [];
+    bool loading = true;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            Future<void> loadComments() async {
+              final response = await supabase
+                  .from('comments')
+                  .select('content, created_at, student_id')
+                  .eq('post_id', postId)
+                  .order('created_at', ascending: false);
+              if (context.mounted) {
+                setState(() {
+                  comments = List<Map<String, dynamic>>.from(response);
+                  loading = false;
+                });
+              }
+            }
+
+            Future<void> submitComment() async {
+              final content = commentController.text.trim();
+              if (content.isEmpty || user == null) return;
+
+              await supabase.from('comments').insert({
+                'post_id': postId,
+                'student_id': user.id,
+                'content': content,
+              });
+              commentController.clear();
+              await loadComments();
+            }
+
+            if (loading) loadComments();
+
+            return Padding(
+              padding: MediaQuery.of(context).viewInsets,
+              child: SizedBox(
+                height: 400,
+                child: Column(
+                  children: [
+                    const SizedBox(height: 12),
+                    const Text('Comments', style: TextStyle(fontSize: 18)),
+                    const Divider(),
+                    Expanded(
+                      child:
+                          loading
+                              ? const Center(child: CircularProgressIndicator())
+                              : ListView.builder(
+                                itemCount: comments.length,
+                                itemBuilder: (context, index) {
+                                  final c = comments[index];
+                                  return ListTile(
+                                    title: Text(c['content']),
+                                    subtitle: Text(
+                                      DateTime.parse(
+                                        c['created_at'],
+                                      ).toLocal().toString(),
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                  );
+                                },
+                              ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: commentController,
+                              decoration: const InputDecoration(
+                                hintText: 'Write a comment...',
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.send),
+                            onPressed: submitComment,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );
