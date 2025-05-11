@@ -1,10 +1,10 @@
 // Combined Login & Sign-Up Page for Students and Clubs
 
-import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'student_home_page.dart';
-import 'club_main_page.dart';
-import 'package:shadcn_ui/shadcn_ui.dart';
+import 'package:flutter/material.dart'; // done by Muhammad
+import 'package:supabase_flutter/supabase_flutter.dart'; // done by Muhammad
+import 'student_home_page.dart'; // done by Muhammad
+import 'club_main_page.dart'; // done by Muhammad
+import 'package:shadcn_ui/shadcn_ui.dart'; // done by Muhammad
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
@@ -85,7 +85,7 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
 
       return supabase.storage.from('club-logos').getPublicUrl(path);
     } catch (e) {
-      debugPrint('🚫 Logo upload failed: \$e');
+      debugPrint('🚫 Logo upload failed: $e');
       return null;
     }
   }
@@ -113,6 +113,19 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
   Future<void> _submit({required bool isSignUp}) async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
+    final toaster = ShadToaster.of(context);
+
+    if (_role == 'student' && !email.endsWith('@uw.edu')) {
+      ShadToaster.of(context).show(
+        const ShadToast.destructive(
+          title: Text('Invalid Email'),
+          description: Text(
+            'Please use your @uw.edu email address to sign up.',
+          ),
+        ),
+      );
+      return;
+    }
 
     try {
       if (isSignUp) {
@@ -128,9 +141,11 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
         if (_role == 'student') {
           final studentIdNumber = _studentIdNumberController.text.trim();
           if (studentIdNumber.isEmpty) {
-            ShadToast.destructive(
-              title: const Text('Error'),
-              description: const Text('Student ID number is required.'),
+            toaster.show(
+              const ShadToast.destructive(
+                title: Text('Error'),
+                description: Text('Student ID number is required.'),
+              ),
             );
             return;
           }
@@ -143,9 +158,11 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
             'following_clubs': [],
           });
 
-          ShadToast(
-            title: const Text('Success'),
-            description: const Text('Student sign up successful!'),
+          toaster.show(
+            const ShadToast(
+              title: Text('Success'),
+              description: Text('Student sign up successful!'),
+            ),
           );
 
           Navigator.pushReplacement(
@@ -156,10 +173,12 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
           final description = _descriptionController.text.trim();
 
           if (_selectedCategories.isEmpty) {
-            ShadToast.destructive(
-              title: const Text('Error'),
-              description: const Text(
-                'Please select at least one category for your club.',
+            toaster.show(
+              const ShadToast.destructive(
+                title: Text('Error'),
+                description: Text(
+                  'Please select at least one category for your club.',
+                ),
               ),
             );
             return;
@@ -176,9 +195,11 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
             'logo_url': logoUrl,
           });
 
-          ShadToast(
-            title: const Text('Success'),
-            description: const Text('Club sign up successful!'),
+          toaster.show(
+            const ShadToast(
+              title: Text('Success'),
+              description: Text('Club sign up successful!'),
+            ),
           );
 
           Navigator.pushReplacement(
@@ -206,17 +227,21 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
             MaterialPageRoute(builder: (_) => const ClubMainPage()),
           );
         } else {
-          ShadToast.destructive(
-            title: const Text('Error'),
-            description: const Text('User role not found.'),
+          toaster.show(
+            const ShadToast.destructive(
+              title: Text('Error'),
+              description: Text('User role not found.'),
+            ),
           );
           await supabase.auth.signOut();
         }
       }
     } catch (e) {
-      ShadToast.destructive(
-        title: const Text('Error'),
-        description: Text(e.toString()),
+      ShadToaster.of(context).show(
+        ShadToast.destructive(
+          title: const Text('Error'),
+          description: Text(e.toString()),
+        ),
       );
     }
   }
