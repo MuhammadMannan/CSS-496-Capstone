@@ -74,6 +74,11 @@ class _ClubPostPageState extends State<ClubPostPage> {
     setState(() => _isUploading = true);
 
     try {
+      DateTime? utcEventDateTime;
+      if (_label == 'event' && _eventDateTime != null) {
+        utcEventDateTime = _eventDateTime!.toUtc();
+      }
+
       final insertResponse =
           await supabase
               .from('posts')
@@ -82,10 +87,7 @@ class _ClubPostPageState extends State<ClubPostPage> {
                 'title': title,
                 'caption': content,
                 'label': _label,
-                'event_datetime':
-                    _label == 'event'
-                        ? _eventDateTime?.toIso8601String()
-                        : null,
+                'event_datetime': utcEventDateTime?.toIso8601String(),
               })
               .select()
               .single();
@@ -109,7 +111,7 @@ class _ClubPostPageState extends State<ClubPostPage> {
         const SnackBar(content: Text('Post created successfully!')),
       );
 
-      _resetForm(); // 🔄 Reset form fields
+      _resetForm();
     } catch (e) {
       print('🔥 Error creating post: $e');
       ScaffoldMessenger.of(

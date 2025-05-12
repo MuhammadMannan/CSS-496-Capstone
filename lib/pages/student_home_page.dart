@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'discover_clubs_page.dart';
 import 'profile_page.dart';
+import 'package:intl/intl.dart'; // already required
+import 'package:timezone/timezone.dart' as tz; // optional for full control
 
 class StudentHomePage extends StatefulWidget {
   const StudentHomePage({super.key});
@@ -52,7 +54,7 @@ class _StudentHomePageState extends State<StudentHomePage> {
 
       final postsResponse = await supabase
           .from('posts')
-          .select('*, clubs:club_id(name, logo_url)')
+          .select('*, clubs:club_id(name, logo_url), event_datetime')
           .inFilter('club_id', followingClubs)
           .order('created_at', ascending: false);
 
@@ -143,7 +145,18 @@ class _StudentHomePageState extends State<StudentHomePage> {
         final club = post['clubs'];
         final logoUrl = club != null ? club['logo_url'] : null;
 
-        print('🪵 clubs field: $club');
+        final eventDateTimeRaw = post['event_datetime'];
+        String? formattedEventDate;
+        if (isEvent && eventDateTimeRaw != null) {
+          try {
+            final eventDateTime = DateTime.parse(eventDateTimeRaw).toLocal();
+            formattedEventDate = DateFormat(
+              'EEEE, MMM d • h:mm a',
+            ).format(eventDateTime);
+          } catch (_) {
+            formattedEventDate = null;
+          }
+        }
 
         return Padding(
           padding: const EdgeInsets.all(12.0),
@@ -200,6 +213,20 @@ class _StudentHomePageState extends State<StudentHomePage> {
                     style: const TextStyle(fontSize: 16),
                   ),
                 ),
+                if (isEvent && formattedEventDate != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0,
+                      vertical: 4,
+                    ),
+                    child: Text(
+                      'Event: $formattedEventDate',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.teal,
+                      ),
+                    ),
+                  ),
                 const Divider(height: 1),
                 Padding(
                   padding: const EdgeInsets.symmetric(

@@ -135,10 +135,7 @@ class _ClubDetailsPageState extends State<ClubDetailsPage> {
                 onRefresh: _loadClubDetails,
                 child: ListView(
                   padding: const EdgeInsets.symmetric(vertical: 12),
-                  children: [
-                    _buildClubHeader(),
-                    ..._posts.map(_buildPostCard).toList(),
-                  ],
+                  children: [_buildClubHeader(), ..._posts.map(_buildPostCard)],
                 ),
               ),
     );

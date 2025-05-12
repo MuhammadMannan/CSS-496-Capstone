@@ -37,6 +37,7 @@ dependencies:
   shadcn_ui: ^0.24.0
   supabase_flutter: ^2.8.4
   image_picker: ^1.1.2
+  timezone: ^0.10.1
 
 dev_dependencies:
   flutter_test:
