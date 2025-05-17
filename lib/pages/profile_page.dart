@@ -12,7 +12,7 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  int _selectedIndex = 2;
+  final int _selectedIndex = 2;
 
   static final List<Widget> _pages = <Widget>[
     StudentHomePage(),
