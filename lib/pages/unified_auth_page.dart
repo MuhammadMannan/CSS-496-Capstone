@@ -1,12 +1,12 @@
-// Combined Login & Sign-Up Page for Students and Clubs
+// Unified Login & Sign-Up Page for both Students and Clubs
 
-import 'package:flutter/material.dart'; // done by Muhammad
-import 'package:supabase_flutter/supabase_flutter.dart'; // done by Muhammad
-import 'student_home_page.dart'; // done by Muhammad
-import 'club_main_page.dart'; // done by Muhammad
-import 'package:shadcn_ui/shadcn_ui.dart'; // done by Muhammad
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
+import 'package:campus_connect/pages/club_post_page.dart';
+import 'package:flutter/material.dart'; // Flutter core UI toolkit
+import 'package:supabase_flutter/supabase_flutter.dart'; // Supabase for auth and backend
+import 'student_home_page.dart'; // Student landing page
+import 'package:shadcn_ui/shadcn_ui.dart'; // ShadCN UI component library
+import 'package:image_picker/image_picker.dart'; // For picking logo images
+import 'dart:io'; // For handling file input (image files)
 
 class UnifiedAuthPage extends StatefulWidget {
   const UnifiedAuthPage({super.key});
@@ -19,22 +19,28 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
   final supabase = Supabase.instance.client;
   final ImagePicker _picker = ImagePicker();
 
-  bool obscure = true;
-  String _selectedTab = 'login';
-  String _role = 'student';
+  // UI state variables
+  bool obscure = true; // Password visibility toggle
+  String _selectedTab = 'login'; // Current selected tab (login/signup)
+  String _role = 'student'; // Default selected role
 
+  // Role options
   final roles = {'student': 'Student', 'club': 'Club'};
 
+  // Form input controllers
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _studentIdNumberController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _meetingTimesController = TextEditingController();
 
+  // Club-specific input
   List<String> _selectedCategories = [];
-  final String _searchValue = '';
-  File? _logoFile;
+  final String _searchValue = ''; // Future support for category search
+  File? _logoFile; // Club logo file reference
 
+  // Predefined categories for clubs
   static const clubCategories = {
     'tech': 'Technology',
     'business': 'Business',
@@ -52,12 +58,14 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
     'leadership': 'Leadership & Professional Dev',
   };
 
+  // Filter categories by search (placeholder logic for future enhancement)
   Map<String, String> get _filteredCategories => {
     for (final entry in clubCategories.entries)
       if (entry.value.toLowerCase().contains(_searchValue.toLowerCase()))
         entry.key: entry.value,
   };
 
+  // Opens the image picker and stores the selected image file
   Future<void> _pickLogoImage() async {
     final picked = await _picker.pickImage(source: ImageSource.gallery);
     if (picked != null) {
@@ -65,6 +73,7 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
     }
   }
 
+  // Uploads the club logo to Supabase Storage and returns public URL
   Future<String?> _uploadLogo(String clubId) async {
     if (_logoFile == null) return null;
 
@@ -90,6 +99,7 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
     }
   }
 
+  // Checks if user is in students or clubs table and returns their role
   Future<String?> _getUserRole(String userId) async {
     final student =
         await supabase
@@ -110,13 +120,15 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
     return null;
   }
 
+  // Handles form submission for login or signup based on `isSignUp` flag
   Future<void> _submit({required bool isSignUp}) async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
     final toaster = ShadToaster.of(context);
 
+    // Restrict student emails to @uw.edu domain
     if (_role == 'student' && !email.endsWith('@uw.edu')) {
-      ShadToaster.of(context).show(
+      toaster.show(
         const ShadToast.destructive(
           title: Text('Invalid Email'),
           description: Text(
@@ -129,6 +141,7 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
 
     try {
       if (isSignUp) {
+        // Sign-up flow
         final response = await supabase.auth.signUp(
           email: email,
           password: password,
@@ -139,6 +152,7 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
         final name = _nameController.text.trim();
 
         if (_role == 'student') {
+          // Student signup
           final studentIdNumber = _studentIdNumberController.text.trim();
           if (studentIdNumber.isEmpty) {
             toaster.show(
@@ -170,7 +184,9 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
             MaterialPageRoute(builder: (_) => const StudentHomePage()),
           );
         } else {
+          // Club signup
           final description = _descriptionController.text.trim();
+          final recurringMeetings = _meetingTimesController.text.trim();
 
           if (_selectedCategories.isEmpty) {
             toaster.show(
@@ -193,6 +209,7 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
             'description': description,
             'category': _selectedCategories,
             'logo_url': logoUrl,
+            'recurring_meeting_times': recurringMeetings,
           });
 
           toaster.show(
@@ -204,10 +221,11 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
 
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const ClubMainPage()),
+            MaterialPageRoute(builder: (_) => const ClubPostPage()),
           );
         }
       } else {
+        // Login flow
         final response = await supabase.auth.signInWithPassword(
           email: email,
           password: password,
@@ -224,7 +242,7 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
         } else if (role == 'club') {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const ClubMainPage()),
+            MaterialPageRoute(builder: (_) => const ClubPostPage()),
           );
         } else {
           toaster.show(
@@ -237,7 +255,8 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
         }
       }
     } catch (e) {
-      ShadToaster.of(context).show(
+      // Show error message on exception
+      toaster.show(
         ShadToast.destructive(
           title: const Text('Error'),
           description: Text(e.toString()),
@@ -246,18 +265,21 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
     }
   }
 
+  // Builds role selection dropdown (Student / Club)
   Widget _buildRoleSelect() {
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 180),
       child: ShadSelect<String>(
         placeholder: const Text('Select Role'),
         initialValue: _role,
-        options: [
-          ...roles.entries.map(
-            (entry) => ShadOption(value: entry.key, child: Text(entry.value)),
-          ),
-        ],
-        selectedOptionBuilder: (context, value) => Text(roles[value]! ?? ''),
+        options:
+            roles.entries
+                .map(
+                  (entry) =>
+                      ShadOption(value: entry.key, child: Text(entry.value)),
+                )
+                .toList(),
+        selectedOptionBuilder: (context, value) => Text(roles[value]!),
         onChanged: (value) {
           if (value != null) setState(() => _role = value);
         },
@@ -265,6 +287,7 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
     );
   }
 
+  // Reusable input builder with optional password field toggle
   Widget _buildInputField({
     required TextEditingController controller,
     required String placeholder,
@@ -298,6 +321,7 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
     );
   }
 
+  // Multi-select dropdown for club categories
   Widget _buildMultiCategorySelect() {
     final theme = ShadTheme.of(context);
     return Column(
@@ -314,19 +338,13 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
           closeOnSelect: false,
           placeholder: const Text('Select multiple categories'),
           onChanged: (values) {
-            setState(() {
-              _selectedCategories = values;
-              debugPrint('✅ Selected categories: \$values');
-            });
+            setState(() => _selectedCategories = values);
+            debugPrint('✅ Selected categories: $values');
           },
           options: [
             Padding(
               padding: const EdgeInsets.fromLTRB(32, 6, 6, 6),
-              child: Text(
-                'Categories',
-                style: theme.textTheme.large,
-                textAlign: TextAlign.start,
-              ),
+              child: Text('Categories', style: theme.textTheme.large),
             ),
             ...clubCategories.entries.map(
               (entry) => ShadOption(value: entry.key, child: Text(entry.value)),
@@ -344,6 +362,7 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
   @override
   Widget build(BuildContext context) {
     final isStudent = _role == 'student';
+
     return Scaffold(
       appBar: AppBar(title: const Text('UWB Flock')),
       body: Padding(
@@ -354,6 +373,7 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
           tabBarConstraints: const BoxConstraints(maxWidth: 500),
           contentConstraints: const BoxConstraints(maxWidth: 500),
           tabs: [
+            // Login Tab
             ShadTab(
               value: 'login',
               content: Column(
@@ -381,6 +401,8 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
               ),
               child: const Text('Login'),
             ),
+
+            // Sign-Up Tab
             ShadTab(
               value: 'signup',
               content: Column(
@@ -418,6 +440,13 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
                   if (!isStudent) ...[
                     const SizedBox(height: 16),
                     _buildMultiCategorySelect(),
+                    const SizedBox(height: 12),
+                    ShadInput(
+                      controller: _meetingTimesController,
+                      placeholder: const Text(
+                        'Recurring Meeting Times (e.g., Wednesdays 5 PM in UW1-103)',
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     TextButton.icon(
                       onPressed: _pickLogoImage,
