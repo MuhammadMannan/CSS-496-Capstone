@@ -20,7 +20,18 @@ class _ClubDetailsPageState extends State<ClubDetailsPage> {
   @override
   void initState() {
     super.initState();
-    _loadClubDetails();
+    _incrementViewCount().then((_) => _loadClubDetails());
+  }
+
+  Future<void> _incrementViewCount() async {
+    try {
+      await supabase.rpc(
+        'increment_club_view_count',
+        params: {'club_id_input': widget.clubId},
+      );
+    } catch (e) {
+      debugPrint('Error incrementing view count: $e');
+    }
   }
 
   Future<void> _loadClubDetails() async {
@@ -55,10 +66,9 @@ class _ClubDetailsPageState extends State<ClubDetailsPage> {
     final logoUrl = _club!['logo_url'];
     final name = _club!['name'] ?? 'Unnamed Club';
     final description = _club!['description'] ?? '';
+    final recurringMeetingTimes = _club!['recurring_meeting_times'];
     final categoryKeys = (_club!['category'] ?? []) as List<dynamic>;
-    final categoryLabels = categoryKeys.join(
-      ', ',
-    ); // Replace with label map if needed
+    final categoryLabels = categoryKeys.join(', ');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -88,6 +98,27 @@ class _ClubDetailsPageState extends State<ClubDetailsPage> {
         ),
         const SizedBox(height: 8),
         Text(description),
+        if (recurringMeetingTimes != null &&
+            recurringMeetingTimes.toString().isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: const [
+              Icon(Icons.calendar_today, size: 16, color: Colors.teal),
+              SizedBox(width: 6),
+              Text(
+                'Recurring Meetings:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            recurringMeetingTimes,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 14, color: Colors.teal),
+          ),
+        ],
         const Divider(thickness: 1),
       ],
     );

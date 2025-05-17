@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:campus_connect/components/club_bottom_navbar.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import 'dart:io';
 
 class ClubPostPage extends StatefulWidget {
@@ -18,8 +20,9 @@ class _ClubPostPageState extends State<ClubPostPage> {
   DateTime? _eventDateTime;
   File? _imageFile;
   bool _isUploading = false;
-
   final _picker = ImagePicker();
+
+  final postTypes = {'announcement': 'Announcement', 'event': 'Event'};
 
   Future<void> _pickImage() async {
     final picked = await _picker.pickImage(source: ImageSource.gallery);
@@ -35,7 +38,7 @@ class _ClubPostPageState extends State<ClubPostPage> {
     final bytes = await _imageFile!.readAsBytes();
 
     try {
-      final response = await supabase.storage
+      await supabase.storage
           .from('post-images')
           .uploadBinary(
             path,
@@ -46,10 +49,7 @@ class _ClubPostPageState extends State<ClubPostPage> {
             ),
           );
 
-      print('🖼️ Upload response: $response');
-
       final publicUrl = supabase.storage.from('post-images').getPublicUrl(path);
-      print('🌐 Public URL: $publicUrl');
       return publicUrl;
     } catch (e) {
       print('🚫 Upload failed: $e');
@@ -65,8 +65,11 @@ class _ClubPostPageState extends State<ClubPostPage> {
     final content = _contentController.text.trim();
 
     if (title.isEmpty || content.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Title and content are required.')),
+      ShadToaster.of(context).show(
+        const ShadToast(
+          title: Text('Missing Fields'),
+          description: Text('Title and content are required.'),
+        ),
       );
       return;
     }
@@ -92,8 +95,6 @@ class _ClubPostPageState extends State<ClubPostPage> {
               .select()
               .single();
 
-      print('🧠 Post Insert Response: $insertResponse');
-
       final postId = insertResponse['id'] as String;
 
       if (_imageFile != null) {
@@ -103,20 +104,25 @@ class _ClubPostPageState extends State<ClubPostPage> {
               .from('posts')
               .update({'image_url': imageUrl})
               .eq('id', postId);
-          print('✅ Post updated with image URL');
         }
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Post created successfully!')),
+      ShadToaster.of(context).show(
+        const ShadToast(
+          title: Text('Success'),
+          description: Text('Post created successfully!'),
+        ),
       );
 
       _resetForm();
     } catch (e) {
       print('🔥 Error creating post: $e');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to create post: $e')));
+      ShadToaster.of(context).show(
+        ShadToast.destructive(
+          title: const Text('Error'),
+          description: Text('Failed to create post: $e'),
+        ),
+      );
     } finally {
       setState(() => _isUploading = false);
     }
@@ -135,6 +141,7 @@ class _ClubPostPageState extends State<ClubPostPage> {
   @override
   Widget build(BuildContext context) {
     final isEvent = _label == 'event';
+    final userId = supabase.auth.currentUser?.id ?? '';
 
     return Scaffold(
       appBar: AppBar(title: const Text('Create Post')),
@@ -142,32 +149,61 @@ class _ClubPostPageState extends State<ClubPostPage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            TextField(
+            ShadInput(
               controller: _titleController,
-              decoration: const InputDecoration(labelText: 'Post Title'),
+              placeholder: const Text('Post Title'),
             ),
-            TextField(
+            const SizedBox(height: 16),
+            ShadTextarea(
               controller: _contentController,
-              decoration: const InputDecoration(labelText: 'Post Content'),
-              maxLines: 5,
+              placeholder: const Text('Post Content'),
             ),
-            const SizedBox(height: 12),
-            DropdownButton<String>(
-              value: _label,
-              onChanged: (value) => setState(() => _label = value!),
-              items: const [
-                DropdownMenuItem(
-                  value: 'announcement',
-                  child: Text('Announcement'),
+            const SizedBox(height: 16),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: ShadSelect<String>(
+                    placeholder: const Text('Select Post Type'),
+                    initialValue: _label,
+                    onChanged:
+                        (value) =>
+                            setState(() => _label = value ?? 'announcement'),
+                    options: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(32, 6, 6, 6),
+                        child: Text(
+                          'Post Types',
+                          style: ShadTheme.of(context).textTheme.muted.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color:
+                                ShadTheme.of(
+                                  context,
+                                ).colorScheme.popoverForeground,
+                          ),
+                          textAlign: TextAlign.start,
+                        ),
+                      ),
+                      ...postTypes.entries.map(
+                        (e) => ShadOption(value: e.key, child: Text(e.value)),
+                      ),
+                    ],
+                    selectedOptionBuilder:
+                        (context, value) => Text(postTypes[value] ?? ''),
+                  ),
                 ),
-                DropdownMenuItem(value: 'event', child: Text('Event')),
+                const SizedBox(width: 12),
+                ShadIconButton(
+                  icon: const Icon(Icons.photo),
+                  onPressed: _pickImage,
+                ),
               ],
             ),
             if (isEvent)
               Column(
                 children: [
-                  const SizedBox(height: 12),
-                  TextButton(
+                  const SizedBox(height: 16),
+                  ShadButton(
                     onPressed: () async {
                       final date = await showDatePicker(
                         context: context,
@@ -199,28 +235,27 @@ class _ClubPostPageState extends State<ClubPostPage> {
                   ),
                 ],
               ),
-            const SizedBox(height: 10),
-            ElevatedButton.icon(
-              onPressed: _pickImage,
-              icon: const Icon(Icons.photo),
-              label: const Text('Add Image (optional)'),
-            ),
             if (_imageFile != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Image.file(_imageFile!, height: 150),
               ),
-            const SizedBox(height: 20),
-            ElevatedButton(
+            const SizedBox(height: 24),
+            ShadButton(
               onPressed: _isUploading ? null : _submitPost,
               child:
                   _isUploading
-                      ? const CircularProgressIndicator()
+                      ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                       : const Text('Post'),
             ),
           ],
         ),
       ),
+      bottomNavigationBar: ClubBottomNavBar(currentIndex: 0, clubId: userId),
     );
   }
 }

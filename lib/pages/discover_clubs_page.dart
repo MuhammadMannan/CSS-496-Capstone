@@ -1,3 +1,4 @@
+import 'package:campus_connect/components/student_bottom_navbar.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'student_home_page.dart';
@@ -90,11 +91,20 @@ class _DiscoverClubsPageState extends State<DiscoverClubsPage> {
       if (response.isEmpty) {
         debugPrint('⚠️ No rows were updated.');
       } else {
+        // ✅ Update followers count in clubs table
+        final countDelta = isFollowing ? -1 : 1;
+        final result = await supabase.rpc(
+          'increment_followers',
+          params: {'club_id_input': clubId, 'delta': countDelta},
+        );
+        debugPrint('📊 New follower count: $result');
+
         debugPrint(
           isFollowing
               ? '❎ Club unfollowed: $clubId'
               : '✅ Club followed: $clubId',
         );
+
         setState(() {
           _followingClubIds = updatedClubs;
         });
@@ -104,8 +114,6 @@ class _DiscoverClubsPageState extends State<DiscoverClubsPage> {
         context,
       ).showSnackBar(SnackBar(content: Text('Follow toggle failed: $e')));
     }
-
-    debugPrint("🧠 userId trying to update: $userId");
   }
 
   Widget _buildClubCard(Map club) {
@@ -231,27 +239,7 @@ class _DiscoverClubsPageState extends State<DiscoverClubsPage> {
           ),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Discover'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-        ],
-        currentIndex: _selectedIndex,
-        onTap: (index) {
-          if (index == _selectedIndex) return;
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) {
-                if (index == 0) return const StudentHomePage();
-                if (index == 2) return const ProfilePage();
-                return widget;
-              },
-            ),
-          );
-        },
-      ),
+      bottomNavigationBar: StudentBottomNavBar(currentIndex: 1),
     );
   }
 }

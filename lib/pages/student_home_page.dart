@@ -1,9 +1,10 @@
+import 'package:campus_connect/components/student_bottom_navbar.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'discover_clubs_page.dart';
 import 'profile_page.dart';
-import 'package:intl/intl.dart'; // already required
-import 'package:timezone/timezone.dart' as tz; // optional for full control
+import 'package:intl/intl.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 class StudentHomePage extends StatefulWidget {
   const StudentHomePage({super.key});
@@ -18,6 +19,8 @@ class _StudentHomePageState extends State<StudentHomePage> {
 
   List<Map<String, dynamic>> _posts = [];
   Set<String> _rsvpedPostIds = {};
+  Set<String> _likedPostIds = {};
+  Map<String, int> _likeCounts = {};
   bool _loading = true;
 
   @override
@@ -47,6 +50,8 @@ class _StudentHomePageState extends State<StudentHomePage> {
         setState(() {
           _posts = [];
           _rsvpedPostIds.clear();
+          _likedPostIds.clear();
+          _likeCounts.clear();
           _loading = false;
         });
         return;
@@ -72,9 +77,29 @@ class _StudentHomePageState extends State<StudentHomePage> {
               .map((e) => e['post_id'] as String)
               .toSet();
 
+      final likeResponse = await supabase
+          .from('likes')
+          .select('post_id')
+          .eq('student_id', user.id);
+
+      final likedPostIds =
+          (likeResponse as List<dynamic>)
+              .map((e) => e['post_id'] as String)
+              .toSet();
+
+      final allLikesResponse = await supabase.from('likes').select('post_id');
+
+      final likeCounts = <String, int>{};
+      for (final item in allLikesResponse) {
+        final pid = item['post_id'] as String;
+        likeCounts[pid] = (likeCounts[pid] ?? 0) + 1;
+      }
+
       setState(() {
         _posts = postList;
         _rsvpedPostIds = rsvpPostIds;
+        _likedPostIds = likedPostIds;
+        _likeCounts = likeCounts;
         _loading = false;
       });
     } catch (e) {
@@ -104,6 +129,31 @@ class _StudentHomePageState extends State<StudentHomePage> {
       _loadFeed();
     } catch (e) {
       // handle error
+    }
+  }
+
+  Future<void> _toggleLike(String postId) async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+
+    final isLiked = _likedPostIds.contains(postId);
+
+    try {
+      if (isLiked) {
+        await supabase
+            .from('likes')
+            .delete()
+            .eq('post_id', postId)
+            .eq('student_id', user.id);
+      } else {
+        await supabase.from('likes').insert({
+          'post_id': postId,
+          'student_id': user.id,
+        });
+      }
+      _loadFeed();
+    } catch (e) {
+      debugPrint('❌ Error toggling like: $e');
     }
   }
 
@@ -141,6 +191,8 @@ class _StudentHomePageState extends State<StudentHomePage> {
         final postId = post['id'] as String;
         final isEvent = post['label'] == 'event';
         final isRsvped = _rsvpedPostIds.contains(postId);
+        final isLiked = _likedPostIds.contains(postId);
+        final likeCount = _likeCounts[postId] ?? 0;
 
         final club = post['clubs'];
         final logoUrl = club != null ? club['logo_url'] : null;
@@ -238,9 +290,16 @@ class _StudentHomePageState extends State<StudentHomePage> {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.favorite_border, size: 20),
+                          GestureDetector(
+                            onTap: () => _toggleLike(postId),
+                            child: Icon(
+                              isLiked ? Icons.favorite : Icons.favorite_border,
+                              color: isLiked ? Colors.red : null,
+                              size: 20,
+                            ),
+                          ),
                           const SizedBox(width: 4),
-                          const Text('0'),
+                          Text(likeCount.toString()),
                           const SizedBox(width: 16),
                           GestureDetector(
                             onTap: () => _openCommentsModal(context, postId),
@@ -379,15 +438,7 @@ class _StudentHomePageState extends State<StudentHomePage> {
     return Scaffold(
       appBar: AppBar(title: const Text('UWB Flock')),
       body: _buildFeed(),
-      bottomNavigationBar: BottomNavigationBar(
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Discover'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-        ],
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-      ),
+      bottomNavigationBar: StudentBottomNavBar(currentIndex: 0),
     );
   }
 }
