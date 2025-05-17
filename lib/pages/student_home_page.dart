@@ -1,10 +1,7 @@
 import 'package:campus_connect/components/student_bottom_navbar.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'discover_clubs_page.dart';
-import 'profile_page.dart';
 import 'package:intl/intl.dart';
-import 'package:timezone/timezone.dart' as tz;
 
 class StudentHomePage extends StatefulWidget {
   const StudentHomePage({super.key});
@@ -15,7 +12,6 @@ class StudentHomePage extends StatefulWidget {
 
 class _StudentHomePageState extends State<StudentHomePage> {
   final supabase = Supabase.instance.client;
-  final int _selectedIndex = 0;
 
   List<Map<String, dynamic>> _posts = [];
   Set<String> _rsvpedPostIds = {};
@@ -155,22 +151,6 @@ class _StudentHomePageState extends State<StudentHomePage> {
     } catch (e) {
       debugPrint('❌ Error toggling like: $e');
     }
-  }
-
-  void _onItemTapped(int index) {
-    if (index == _selectedIndex) return;
-    Widget page;
-    if (index == 0) {
-      page = const StudentHomePage();
-    } else if (index == 1) {
-      page = const DiscoverClubsPage();
-    } else {
-      page = const ProfilePage();
-    }
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => page),
-    );
   }
 
   Widget _buildFeed() {

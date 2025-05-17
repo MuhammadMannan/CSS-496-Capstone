@@ -20,16 +20,6 @@ class _ProfilePageState extends State<ProfilePage> {
     Center(child: Text('Profile Page')),
   ];
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => _pages[index]),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
