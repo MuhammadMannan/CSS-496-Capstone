@@ -37,7 +37,7 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
 
   // Club-specific input
   List<String> _selectedCategories = [];
-  final String _searchValue = ''; // Future support for category search
+  // Future support for category search
   File? _logoFile; // Club logo file reference
 
   // Predefined categories for clubs
@@ -59,11 +59,6 @@ class _UnifiedAuthPageState extends State<UnifiedAuthPage> {
   };
 
   // Filter categories by search (placeholder logic for future enhancement)
-  Map<String, String> get _filteredCategories => {
-    for (final entry in clubCategories.entries)
-      if (entry.value.toLowerCase().contains(_searchValue.toLowerCase()))
-        entry.key: entry.value,
-  };
 
   // Opens the image picker and stores the selected image file
   Future<void> _pickLogoImage() async {

@@ -1,8 +1,8 @@
+// ignore_for_file: use_build_context_synchronously, library_private_types_in_public_api
+
 import 'package:campus_connect/components/student_bottom_navbar.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'student_home_page.dart';
-import 'profile_page.dart';
 import 'club_details_page.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
@@ -16,7 +16,6 @@ class DiscoverClubsPage extends StatefulWidget {
 class _DiscoverClubsPageState extends State<DiscoverClubsPage> {
   final supabase = Supabase.instance.client;
 
-  final int _selectedIndex = 1;
   List<dynamic> _clubs = [];
   List<String> _followingClubIds = [];
   List<String> _selectedCategories = [];
