@@ -2,6 +2,8 @@ import 'package:campus_connect/components/student_bottom_navbar.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:timezone/timezone.dart' as tz;
+import '../components/flock_app_bar.dart';
 
 class StudentHomePage extends StatefulWidget {
   const StudentHomePage({super.key});
@@ -416,7 +418,7 @@ class _StudentHomePageState extends State<StudentHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('UWB Flock')),
+      appBar: const FlockAppBar(),
       body: _buildFeed(),
       bottomNavigationBar: StudentBottomNavBar(currentIndex: 0),
     );

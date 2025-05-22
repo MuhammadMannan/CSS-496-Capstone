@@ -1,14 +1,13 @@
 // Import Flutter core UI library.
 import 'package:flutter/material.dart';
-
 // Import Supabase Flutter package for backend services (auth, database, etc.).
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 // Import the custom page for unified authentication (handles login/signup for both roles).
 import 'pages/unified_auth_page.dart';
-
 // Import ShadCN UI package for consistent design system and components.
 import 'package:shadcn_ui/shadcn_ui.dart';
+import 'components/main_logo.dart';
+import 'components/crow_loading_page.dart';
 
 void main() async {
   // Ensure widget binding is initialized before calling asynchronous code.
@@ -20,9 +19,34 @@ void main() async {
     anonKey:
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsdHNoeWNodHJjeXpzZW9pcGNjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQyNTI4ODcsImV4cCI6MjA1OTgyODg4N30.IRMrVWUEDO5X6jDcq9JXjGBWboLhs788Js_hF8LP-aA',
   );
+  runApp(const AppLauncher());
+}
 
-  // Run the root widget of the application.
-  runApp(MyApp(showDebugBanner: false));
+class AppLauncher extends StatefulWidget {
+  const AppLauncher({super.key});
+
+  @override
+  State<AppLauncher> createState() => _AppLauncherState();
+}
+
+class _AppLauncherState extends State<AppLauncher> {
+  bool _loadingDone = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: _loadingDone
+      ? const MyApp(showDebugBanner: false)
+      : CrowLoadingPage(
+        onComplete: () {
+          setState(() {
+            _loadingDone = true;
+          });
+        },
+      ),
+    );
+  }
 }
 
 // MyApp is the root of the widget tree and configures the theme, routing, and homepage.
@@ -68,11 +92,8 @@ class OnboardingPage extends StatelessWidget {
           Center(
             child: Column(
               children: [
-                // App title displayed prominently.
-                const Text(
-                  'UWB Flock',
-                  style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
-                ),
+                // App title icon/svg displayed prominently.
+                const MainLogo(width: 280),
                 const SizedBox(height: 16), // Add spacing.
                 // App subtitle or mission statement.
                 Text(
