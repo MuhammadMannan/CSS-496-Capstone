@@ -36,15 +36,16 @@ class _AppLauncherState extends State<AppLauncher> {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: _loadingDone
-      ? const MyApp(showDebugBanner: false)
-      : CrowLoadingPage(
-        onComplete: () {
-          setState(() {
-            _loadingDone = true;
-          });
-        },
-      ),
+      home:
+          _loadingDone
+              ? const MyApp(showDebugBanner: false)
+              : CrowLoadingPage(
+                onComplete: () {
+                  setState(() {
+                    _loadingDone = true;
+                  });
+                },
+              ),
     );
   }
 }

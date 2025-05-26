@@ -2,7 +2,6 @@ import 'package:campus_connect/components/student_bottom_navbar.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
-import 'package:timezone/timezone.dart' as tz;
 import '../components/flock_app_bar.dart';
 
 class StudentHomePage extends StatefulWidget {
@@ -161,157 +160,170 @@ class _StudentHomePageState extends State<StudentHomePage> {
     }
 
     if (_posts.isEmpty) {
-      return const Center(
-        child: Text('No posts yet. Follow clubs to see posts!'),
+      return RefreshIndicator(
+        onRefresh: _loadFeed,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            SizedBox(height: 200),
+            Center(child: Text('No posts yet. Follow clubs to see posts!')),
+          ],
+        ),
       );
     }
 
-    return ListView.builder(
-      itemCount: _posts.length,
-      itemBuilder: (context, index) {
-        final post = _posts[index];
-        final postId = post['id'] as String;
-        final isEvent = post['label'] == 'event';
-        final isRsvped = _rsvpedPostIds.contains(postId);
-        final isLiked = _likedPostIds.contains(postId);
-        final likeCount = _likeCounts[postId] ?? 0;
+    return RefreshIndicator(
+      onRefresh: _loadFeed,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        itemCount: _posts.length,
+        itemBuilder: (context, index) {
+          final post = _posts[index];
+          final postId = post['id'] as String;
+          final isEvent = post['label'] == 'event';
+          final isRsvped = _rsvpedPostIds.contains(postId);
+          final isLiked = _likedPostIds.contains(postId);
+          final likeCount = _likeCounts[postId] ?? 0;
 
-        final club = post['clubs'];
-        final logoUrl = club != null ? club['logo_url'] : null;
+          final club = post['clubs'];
+          final logoUrl = club != null ? club['logo_url'] : null;
 
-        final eventDateTimeRaw = post['event_datetime'];
-        String? formattedEventDate;
-        if (isEvent && eventDateTimeRaw != null) {
-          try {
-            final eventDateTime = DateTime.parse(eventDateTimeRaw).toLocal();
-            formattedEventDate = DateFormat(
-              'EEEE, MMM d • h:mm a',
-            ).format(eventDateTime);
-          } catch (_) {
-            formattedEventDate = null;
+          final eventDateTimeRaw = post['event_datetime'];
+          String? formattedEventDate;
+          if (isEvent && eventDateTimeRaw != null) {
+            try {
+              final eventDateTime = DateTime.parse(eventDateTimeRaw).toLocal();
+              formattedEventDate = DateFormat(
+                'EEEE, MMM d • h:mm a',
+              ).format(eventDateTime);
+            } catch (_) {
+              formattedEventDate = null;
+            }
           }
-        }
 
-        return Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Card(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            elevation: 4,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ListTile(
-                  leading:
-                      logoUrl != null
-                          ? CircleAvatar(
-                            backgroundImage: NetworkImage(logoUrl),
-                            backgroundColor: Colors.transparent,
-                          )
-                          : CircleAvatar(
-                            backgroundColor: Colors.purple[100],
-                            child: Text(
-                              post['title']?[0].toUpperCase() ?? '?',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
+          return Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 4,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ListTile(
+                    leading:
+                        logoUrl != null
+                            ? CircleAvatar(
+                              backgroundImage: NetworkImage(logoUrl),
+                              backgroundColor: Colors.transparent,
+                            )
+                            : CircleAvatar(
+                              backgroundColor: Colors.purple[100],
+                              child: Text(
+                                post['title']?[0].toUpperCase() ?? '?',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
-                          ),
-                  title: Text(
-                    post['title'] ?? 'No Title',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                if (post['image_url'] != null)
-                  Container(
-                    height: 180,
-                    width: double.infinity,
-                    color: Colors.grey[300],
-                    child: Image.network(
-                      post['image_url'],
-                      fit: BoxFit.cover,
-                      errorBuilder:
-                          (context, error, stackTrace) => const Center(
-                            child: Icon(Icons.broken_image, size: 40),
-                          ),
+                    title: Text(
+                      post['title'] ?? 'No Title',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  child: Text(
-                    post['caption'] ?? '',
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                ),
-                if (isEvent && formattedEventDate != null)
+                  if (post['image_url'] != null)
+                    Container(
+                      height: 180,
+                      width: double.infinity,
+                      color: Colors.grey[300],
+                      child: Image.network(
+                        post['image_url'],
+                        fit: BoxFit.cover,
+                        errorBuilder:
+                            (context, error, stackTrace) => const Center(
+                              child: Icon(Icons.broken_image, size: 40),
+                            ),
+                      ),
+                    ),
                   Padding(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0,
-                      vertical: 4,
+                      horizontal: 16,
+                      vertical: 12,
                     ),
                     child: Text(
-                      'Event: $formattedEventDate',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.teal,
-                      ),
+                      post['caption'] ?? '',
+                      style: const TextStyle(fontSize: 16),
                     ),
                   ),
-                const Divider(height: 1),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          GestureDetector(
-                            onTap: () => _toggleLike(postId),
-                            child: Icon(
-                              isLiked ? Icons.favorite : Icons.favorite_border,
-                              color: isLiked ? Colors.red : null,
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(likeCount.toString()),
-                          const SizedBox(width: 16),
-                          GestureDetector(
-                            onTap: () => _openCommentsModal(context, postId),
-                            child: Row(
-                              children: const [
-                                Icon(Icons.chat_bubble_outline, size: 20),
-                                SizedBox(width: 4),
-                                Text('Comment'),
-                              ],
-                            ),
-                          ),
-                        ],
+                  if (isEvent && formattedEventDate != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16.0,
+                        vertical: 4,
                       ),
-                      isEvent
-                          ? TextButton(
-                            onPressed: () => _toggleRsvp(postId),
-                            child: Text(isRsvped ? 'Cancel RSVP' : 'RSVP'),
-                          )
-                          : TextButton(
-                            onPressed: () {},
-                            child: const Text('Visit Club'),
-                          ),
-                    ],
+                      child: Text(
+                        'Event: $formattedEventDate',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.teal,
+                        ),
+                      ),
+                    ),
+                  const Divider(height: 1),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            GestureDetector(
+                              onTap: () => _toggleLike(postId),
+                              child: Icon(
+                                isLiked
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
+                                color: isLiked ? Colors.red : null,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(likeCount.toString()),
+                            const SizedBox(width: 16),
+                            GestureDetector(
+                              onTap: () => _openCommentsModal(context, postId),
+                              child: Row(
+                                children: const [
+                                  Icon(Icons.chat_bubble_outline, size: 20),
+                                  SizedBox(width: 4),
+                                  Text('Comment'),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        isEvent
+                            ? TextButton(
+                              onPressed: () => _toggleRsvp(postId),
+                              child: Text(isRsvped ? 'Cancel RSVP' : 'RSVP'),
+                            )
+                            : TextButton(
+                              onPressed: () {},
+                              child: const Text('Visit Club'),
+                            ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 

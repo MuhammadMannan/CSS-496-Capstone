@@ -7,9 +7,7 @@ import 'student_home_page.dart'; // Student landing page
 import 'package:shadcn_ui/shadcn_ui.dart'; // ShadCN UI component library
 import 'package:image_picker/image_picker.dart'; // For picking logo images
 import 'dart:io'; // For handling file input (image files)
-import '../components/main_logo.dart';
 import '../components/flock_app_bar.dart';
-
 
 class UnifiedAuthPage extends StatefulWidget {
   const UnifiedAuthPage({super.key});

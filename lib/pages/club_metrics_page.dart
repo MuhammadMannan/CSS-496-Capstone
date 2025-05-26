@@ -144,14 +144,14 @@ class _ClubMetricsPageState extends State<ClubMetricsPage> {
       likesValue,
       engagementValue,
     ].reduce((a, b) => a > b ? a : b);
-    double _scale(double value) => maxValue > 0 ? (value / maxValue) * 100 : 0;
+    double scale(double value) => maxValue > 0 ? (value / maxValue) * 100 : 0;
 
     final barData = [
       BarChartGroupData(
         x: 0,
         barRods: [
           BarChartRodData(
-            toY: _scale(followersValue),
+            toY: scale(followersValue),
             color: Colors.blue,
             width: 18,
             borderRadius: BorderRadius.circular(4),
@@ -162,7 +162,7 @@ class _ClubMetricsPageState extends State<ClubMetricsPage> {
         x: 1,
         barRods: [
           BarChartRodData(
-            toY: _scale(likesValue),
+            toY: scale(likesValue),
             color: Colors.green,
             width: 18,
             borderRadius: BorderRadius.circular(4),
@@ -173,7 +173,7 @@ class _ClubMetricsPageState extends State<ClubMetricsPage> {
         x: 2,
         barRods: [
           BarChartRodData(
-            toY: _scale(engagementValue),
+            toY: scale(engagementValue),
             color: Colors.orange,
             width: 18,
             borderRadius: BorderRadius.circular(4),
@@ -287,6 +287,7 @@ class _ClubMetricsPageState extends State<ClubMetricsPage> {
                     ),
                     SizedBox(height: 10),
                     _buildMetricTile('Page Views', _viewCount.toString()),
+                    SizedBox(height: 10),
                     _buildMetricTile(
                       'Avg Likes/Post',
                       _avgLikes.toStringAsFixed(2),
